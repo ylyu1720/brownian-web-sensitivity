@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Brownian Web · Resampling Sensitivity Lab</title>
+<style>
+  :root { --ink:#172a43; --muted:#61738c; --blue:#1769ab; --blue-light:#eaf3fa; --orange:#ec6745; --line:#dce7ef; --panel:#fff; --body:#f6f9fc; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--body); color:var(--ink); font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  body { min-width:340px; }
+  .shell { max-width:1490px; margin:auto; padding:31px 32px 54px; }
+  .topline { display:flex; gap:14px; justify-content:space-between; align-items:flex-start; margin-bottom:24px; }
+  .eyebrow { color:var(--blue); font-weight:750; letter-spacing:.13em; font-size:11px; text-transform:uppercase; margin-bottom:9px; }
+  h1 { font-family:Georgia,"Times New Roman",serif; font-size:clamp(28px,3.1vw,43px); letter-spacing:-.035em; margin:0 0 9px; font-weight:650; line-height:1.13; }
+  .lead { font-size:13px; line-height:1.7; color:var(--muted); max-width:830px; margin:0; }
+  .actions { display:flex; gap:8px; padding-top:7px; align-items:center; white-space:nowrap; }
+  button { font:inherit; cursor:pointer; border:1px solid #d1dee9; border-radius:9px; background:#fff; color:#31506d; font-weight:650; font-size:12px; padding:10px 13px; transition:background .15s,border-color .15s; }
+  button:hover { background:#f1f7fb; border-color:#9cc5e8; }
+  button:focus-visible, input:focus-visible { outline:3px solid #9dd2f5; outline-offset:3px; }
+  .main-btn { background:#196fae; border-color:#196fae; color:white; }
+  .main-btn:hover { background:#125f98; color:#fff; }
+  .control-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 4px 22px rgba(31,72,113,.042); }
+  .control { padding:19px 24px 18px; }
+  .ctl-title { display:flex; justify-content:space-between; align-items:baseline; gap:15px; margin-bottom:12px; }
+  .ctl-label { font-size:15px; font-weight:760; }
+  .param-symbol { font-family:Georgia,serif; font-style:italic; color:#1764a4; font-size:22px; margin-right:5px; }
+  .pill { background:#ecf4fa; color:#175d99; border:1px solid #d9e9f6; border-radius:8px; padding:6px 10px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:14px; font-weight:780; font-variant-numeric:tabular-nums; min-width:82px; text-align:center; }
+  .range-row { display:flex; align-items:center; gap:13px; }
+  .end { font-size:11px; color:var(--muted); min-width:29px; white-space:nowrap; }
+  .end:last-child { text-align:right; }
+  input[type=range] { appearance:none; -webkit-appearance:none; flex:1; min-width:0; height:6px; border-radius:10px; background:#dbe7ef; outline:none; cursor:pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; height:18px; width:18px; border-radius:50%; background:#1877bd; border:3px solid white; box-shadow:0 0 0 1px #a5c8e3,0 2px 6px #bfd9e9; }
+  input[type=range]::-moz-range-thumb { height:13px; width:13px; border-radius:50%; background:#1877bd; border:3px solid white; box-shadow:0 0 0 1px #a5c8e3; }
+  .ctl-desc { font-size:12px; color:var(--muted); line-height:1.5; margin:14px 0 0; }
+  .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:16px; }
+  .metric { padding:15px 17px 13px; min-width:0; }
+  .metric-name { color:#70839a; font-size:11px; font-weight:650; margin-bottom:7px; }
+  .metric-value { color:#1e4f76; font-size:24px; font-weight:760; font-variant-numeric:tabular-nums; letter-spacing:-.045em; white-space:nowrap; }
+  .metric-value.orange { color:#d75b3b; }
+  .metric-sub { color:#8898a9; font-size:10px; margin-top:5px; line-height:1.4; }
+  .section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:29px; margin-bottom:12px; }
+  .section-heading h2 { font-size:16px; font-weight:780; margin:0; letter-spacing:-.015em; }
+  .section-heading .section-detail { margin:4px 0 0; color:#74849a; font-size:11.5px; }
+  .options { display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+  .check { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#556b80; cursor:pointer; user-select:none; }
+  input[type=checkbox] { accent-color:#166fae; width:14px; height:14px; cursor:pointer; }
+  .panels { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:15px; }
+  .panel { overflow:hidden; }
+  .panel-top { padding:16px 21px 13px; display:flex; gap:8px; justify-content:space-between; align-items:center; border-bottom:1px solid #ecf0f4; background:linear-gradient(120deg,#f9fcff,#fff 70%); }
+  .panel-label { font-family:Georgia,"Times New Roman",serif; font-size:17px; font-weight:650; color:#1b405f; }
+  .panel-sub { color:#8294a5; font-size:11px; margin-top:5px; }
+  .legend { display:inline-flex; align-items:center; gap:7px; font-size:10.5px; color:#667d94; white-space:nowrap; }
+  .legend .swatch { width:18px; height:3px; border-radius:3px; background:#27689d; }
+  .legend .swatch.orange { background:var(--orange); }
+  .canvas-wrap { position:relative; padding:8px 9px 12px; }
+  canvas { display:block; width:100%; height:440px; touch-action:manipulation; cursor:crosshair; }
+  .plot-foot { display:flex; align-items:center; justify-content:space-between; color:#7b8da0; font-size:10.5px; padding:0 20px 15px; gap:14px; }
+  .dot { width:8px; height:8px; display:inline-block; border-radius:100%; background:#ec6745; margin-right:5px; }
+  .plot-foot strong { font-weight:650; color:#305c7c; }
+  .inspect { margin-top:16px; padding:20px 22px 15px; }
+  .inspect-title { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:center; }
+  .inspect-title h2 { margin:0; font-size:15px; }
+  .inspect-title p { margin:5px 0 0; color:#7f90a4; font-size:11.5px; }
+  .legend-group { display:flex; gap:16px; }
+  .legend-group span { display:flex; gap:6px; align-items:center; font-size:11px; color:#60768a; }
+  .line { display:inline-block; width:21px; height:3px; border-radius:4px; background:#216ca5; }
+  .line.orange { background:#eb6241; }
+  #overlayCanvas { height:207px; cursor:default; margin-top:8px; }
+  .inspect-bottom { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; color:#647c91; font-size:11px; padding:0 9px 2px; }
+  .inspect-bottom strong { color:#123f69; }
+  .math-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .equation-card { padding:20px 23px; }
+  .equation-card h3 { margin:0 0 8px; font-size:13px; color:#275574; }
+  .equation { font-family:Cambria,Georgia,serif; font-size:clamp(14px,1.2vw,17px); line-height:1.8; white-space:normal; color:#16314c; }
+  .equation-card p { font-size:11.5px; color:#78899d; line-height:1.7; margin:7px 0 0; }
+  .footnote { font-size:11px; color:#7d8da0; line-height:1.8; margin:15px 2px 0; }
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .comparison { margin-top:16px; padding:20px 22px 18px; }
+  .comparison-heading { display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:12px; margin-bottom:15px; }
+  .comparison-heading h2 { margin:0 0 5px; font-size:16px; }
+  .comparison-heading p { margin:0; color:#7389a0; font-size:11.5px; line-height:1.6; }
+  .soft-tag { display:inline-block; color:#23719e; background:#edf5fa; border:1px solid #d9eaf3; font-size:10.5px; font-weight:700; border-radius:999px; padding:6px 11px; }
+  .compare-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:15px; }
+  .correlation-cell { border:1px solid #e6edf3; background:#fbfdff; border-radius:11px; padding:11px 14px; }
+  .correlation-cell.orange-stat { background:#fffaf8; border-color:#fae5dd; }
+  .correlation-line { display:flex; align-items:baseline; justify-content:space-between; gap:12px; color:#526b83; font-size:11.5px; }
+  .correlation-number { font-family:ui-monospace,Menlo,monospace; font-size:23px; font-weight:770; color:#1a639b; letter-spacing:-.05em; }
+  .orange-stat .correlation-number { color:#d96a49; }
+  .bartrack { height:5px; border-radius:10px; background:#e4ebf1; overflow:hidden; margin-top:9px; }
+  .barfill { height:100%; background:#357cae; transition:width .22s; border-radius:10px; }
+  .orange-stat .barfill { background:#df8062; }
+  .white-panels { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .white-panel { min-width:0; border:1px solid #e7eef3; border-radius:11px; overflow:hidden; background:#fff; }
+  .white-panel-title { display:flex; justify-content:space-between; gap:6px; padding:9px 13px 0; color:#355d7a; font-size:12px; font-weight:750; }
+  .white-panel-title span { font-weight:450; color:#8da1b1; }
+  .white-panel canvas { height:236px; }
+  .comparison-note { font-size:11px; line-height:1.7; color:#71869b; margin:11px 1px 0; }
+  .comparison-note b { color:#456780; }
+  .shared-parameters { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 0 15px; }
+  .shared-parameter { border:1px solid #e3edf5; background:#f6fafe; padding:11px 13px; border-radius:10px; min-width:0; }
+  .shared-parameter .key { display:block; font-size:10px; color:#68839c; margin-bottom:6px; letter-spacing:.015em; }
+  .shared-parameter output { display:block; font-size:16px; font-weight:770; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#205b87; font-variant-numeric:tabular-nums; }
+  .compare-detail-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:12px; }
+  .compare-detail-item { border:1px solid #edf1f5; border-radius:9px; background:#fcfdff; padding:10px 12px; min-width:0; }
+  .compare-detail-item .key { font-size:10px; color:#70849b; display:block; margin-bottom:4px; }
+  .compare-detail-item output { font-size:15px; font-weight:750; font-variant-numeric:tabular-nums; color:#2a5d84; display:block; }
+  .compare-legend { display:flex; gap:14px; flex-wrap:wrap; margin:0 0 11px; font-size:10.5px; color:#75889d; }
+  .compare-legend > span { display:inline-flex; align-items:center; gap:5px; }
+  .compare-legend i { display:inline-block; width:18px; height:3px; border-radius:3px; background:#2f7aae; }
+  .compare-legend i.amber { background:#e36c48; }
+  .detail-fold { margin-top:12px; padding:14px 19px; color:#395f7e; }
+  .detail-fold summary { cursor:pointer; font-size:12px; font-weight:730; }
+  .detail-fold p { font-size:12px; line-height:1.8; color:#687f93; margin:10px 0 0; }
+  .detail-fold .formula { font-family:Georgia,Cambria,serif; font-size:14px; line-height:1.75; color:#1e4f73; display:block; margin-top:10px; overflow-wrap:anywhere; }
+  @media (max-width:850px) { .shared-parameters,.compare-detail-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:420px) { .shared-parameter { padding:9px; } .shared-parameter output { font-size:14px; } }
+  @media(max-width:1000px) { .shell { padding:23px 18px 40px; } .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } canvas { height:365px; } }
+  @media(max-width:700px) { .comparison {padding:17px 14px;} .white-panel canvas {height:206px;} .compare-stats {gap:7px;} .correlation-cell {padding:10px;} .correlation-number {font-size:19px;} .correlation-line {font-size:10px;} .topline { flex-direction:column; } .actions { padding-top:0; } .control-grid,.panels,.math-bottom { grid-template-columns:1fr; } .control { padding:17px; } .section-heading { align-items:flex-start; } canvas { height:360px; } #overlayCanvas { height:200px; } .panel-top { padding:14px 16px; } .metrics { gap:8px; } .metric { padding:13px; } .metric-value { font-size:21px; } }
+  @media(prefers-reduced-motion:reduce) { * { scroll-behavior:auto !important; animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<main class="shell">
+  <div class="topline">
+    <div>
+      <div class="eyebrow">INTERACTIVE STOCHASTIC PROCESSES LAB</div>
+      <h1>Brownian Web <span style="font-style:italic;color:#1a6ca9">&</span> Noise Sensitivity</h1>
+      <p class="lead">Explore coalescing random walks driven by independent arrows. Decrease <b>δ</b> for a finer diffusive approximation; adjust <b>ε</b> to independently resample a fraction of the environment. The White Noise comparison below uses the <b>same parameters and time grid</b>.</p>
+    </div>
+    <div class="actions">
+      <button id="newSeed" title="Generate a fresh random environment while keeping paired paths on the same starting sites">↻ New random sample</button>
+      <button id="animateBtn" class="main-btn" title="Automatically sweep the resampling probability">▶ Sweep ε</button>
+    </div>
+  </div>
+
+  <div class="control-grid">
+    <section class="card control" aria-label="Adjust diffusion scale">
+      <div class="ctl-title"><div class="ctl-label"><span class="param-symbol">δ</span>Diffusive scaling / mesh size <span class="soft-tag" style="margin-left:6px">10× finer range</span></div><output class="pill" id="deltaValue">0.00450</output></div>
+      <div class="range-row"><span class="end">Coarse</span><input id="deltaSlider" type="range" min="0" max="9" step="1" value="8" aria-label="Choose delta (diffusion scale)" /><span class="end">Fine</span></div>
+      <p class="ctl-desc">Range <b>0.02000 → 0.00375</b> (one tenth of the former scale). Spatial step = δ; temporal step = δ². Moving right refines the grid. Dense arrow markers are displayed by subsampling; trajectories use every time step.</p>
+    </section>
+    <section class="card control" aria-label="Adjust resampling probability">
+      <div class="ctl-title"><div class="ctl-label"><span class="param-symbol">ε</span>Independent resampling probability</div><output class="pill" id="epsValue">0.025</output></div>
+      <div class="range-row"><span class="end">0</span><input id="epsSlider" type="range" min="0" max="150" step="1" value="25" aria-label="Choose epsilon (resampling probability), from zero to fifteen percent" /><span class="end">15%</span></div>
+      <p class="ctl-desc">At each site, an independent sign replaces the original with probability <b>ε</b>; the probability of an actual arrow reversal is <b>ε/2</b>. Moving this slider leaves the original environment unchanged.</p>
+    </section>
+  </div>
+
+  <div class="metrics" role="group" aria-label="Live Brownian Web statistics">
+    <section class="card metric"><div class="metric-name">Parity-lattice sites in view</div><div class="metric-value" id="nSites">—</div><div class="metric-sub">Independent signs on the even lattice</div></section>
+    <section class="card metric"><div class="metric-name" id="flipName">Actual arrow reversals</div><div class="metric-value orange" id="nFlipped">—</div><div class="metric-sub" id="flippedRate">A resampling attempt may keep the same sign</div></section>
+    <section class="card metric"><div class="metric-name">Paired paths with different endpoints</div><div class="metric-value orange" id="changedPct">—</div><div class="metric-sub" id="nPaths">Identical space–time starting points</div></section>
+    <section class="card metric"><div class="metric-name">Single-site arrow correlation</div><div class="metric-value" id="rhoValue">—</div><div class="metric-sub">E[σ<sub>z</sub> σ<sup>ε</sup><sub>z</sub>] = 1 − ε</div></section>
+  </div>
+
+  <div class="section-heading">
+    <div><h2>Brownian Web · Matched environments</h2><p class="section-detail">Time runs upward. Every arrow points one lattice step up-left or up-right. Paths coalesce when they meet. Select a path to highlight it in both panels.</p></div>
+    <div class="options"><label class="check"><input type="checkbox" id="showFlip" checked />Mark flipped arrows</label><label class="check"><input type="checkbox" id="showArrows" />Show discrete arrows (subsampled)</label></div>
+  </div>
+  <div class="panels">
+    <section class="card panel">
+      <div class="panel-top"><div><div class="panel-label">Original configuration</div><div class="panel-sub">Original sign field σ · Coalescing walks</div></div><div class="legend"><i class="swatch"></i>Original trajectories</div></div>
+      <div class="canvas-wrap"><canvas id="originalCanvas" role="img" aria-label="Coalescing random walks driven by independent original arrows"></canvas></div>
+      <div class="plot-foot"><span><span class="dot"></span>Dots show a subsample of reversed arrows</span><strong>σ<sub>z</sub> ∈ {−1,+1}</strong></div>
+    </section>
+    <section class="card panel">
+      <div class="panel-top"><div><div class="panel-label">After resampling</div><div class="panel-sub">Resampled sign field σ<sup>ε</sup> · Same starts</div></div><div class="legend"><i class="swatch orange"></i>Changed trajectory segments</div></div>
+      <div class="canvas-wrap"><canvas id="resampledCanvas" role="img" aria-label="Coalescing random walks in the resampled environment, with displaced sections in orange"></canvas></div>
+      <div class="plot-foot"><span>Blue-gray: same position　 <span class="dot"></span>Orange: displaced</span><strong>X<sup>ε</sup><sub>n+1</sub> = X<sup>ε</sup><sub>n</sub> + σ<sup>ε</sup></strong></div>
+    </section>
+  </div>
+
+  <section class="card inspect" aria-label="Paired-path trajectory inspector">
+    <div class="inspect-title">
+      <div><h2>Trajectory inspector <span style="font-weight:500;color:#8ca0af">/ Pairwise trajectory inspector</span></h2><p>Initially highlights a visibly changed pair, if any. The selection persists when ε changes. Click another path in either plot to inspect it.</p></div>
+      <div class="legend-group"><span><i class="line"></i>Original</span><span><i class="line orange"></i>Resampled</span></div>
+    </div>
+    <canvas id="overlayCanvas" role="img" aria-label="Overlay of the selected original and resampled trajectories"></canvas>
+    <div class="inspect-bottom"><span id="startInfo">Start: —</span><span id="splitInfo">First separation: —</span><span id="endInfo">Endpoint distance: —</span></div>
+  </section>
+
+  <section class="card comparison" aria-label="White Noise comparison experiment">
+    <div class="comparison-heading">
+      <div>
+        <h2>White Noise · Matched Control Experiment</h2>
+        <p>One shared pair of sliders drives both models. The original and resampled White Noise walks use exactly the same δ, ε, and time horizon as the Brownian Web above.</p>
+      </div>
+      <span class="soft-tag">LIVE · SHARED δ & ε</span>
+    </div>
+    <div class="shared-parameters" role="group" aria-label="Parameters shared by both models">
+      <div class="shared-parameter"><span class="key">δ · Spatial mesh</span><output id="compareDelta">0.00450</output></div>
+      <div class="shared-parameter"><span class="key">ε · Resampling rate</span><output id="compareEps">0.025</output></div>
+      <div class="shared-parameter"><span class="key">N · Shared time steps</span><output id="compareN">—</output></div>
+      <div class="shared-parameter"><span class="key">Δt = δ²</span><output id="compareDt">—</output></div>
+    </div>
+    <div class="compare-stats">
+      <div class="correlation-cell">
+        <div class="correlation-line"><span>White Noise · Exact endpoint correlation</span><output id="whiteRho" class="correlation-number">—</output></div>
+        <div class="bartrack"><div id="whiteBar" class="barfill" style="width:100%"></div></div>
+      </div>
+      <div class="correlation-cell orange-stat">
+        <div class="correlation-line"><span>Brownian Web · Exact endpoint correlation</span><output id="webRho" class="correlation-number">—</output></div>
+        <div class="bartrack"><div id="webBar" class="barfill" style="width:100%"></div></div>
+      </div>
+    </div>
+    <div class="white-panels">
+      <div class="white-panel"><div class="white-panel-title">White Noise · Original <span>ξ₀, ξ₁, …</span></div><canvas id="whiteOriginal" role="img" aria-label="Original scaled partial-sum path with independent temporal signs"></canvas></div>
+      <div class="white-panel"><div class="white-panel-title">White Noise · Resampled <span>ξ<sup>ε</sup> · orange</span></div><canvas id="whiteResampled" role="img" aria-label="Resampled scaled partial-sum path in orange with original path dashed in blue"></canvas></div>
+    </div>
+    <div class="compare-detail-grid" role="group" aria-label="White Noise observed sample statistics">
+      <div class="compare-detail-item"><span class="key">Replacements (sample)</span><output id="whiteAttempts">—</output></div>
+      <div class="compare-detail-item"><span class="key">Actual sign flips (sample)</span><output id="whiteFlips">—</output></div>
+      <div class="compare-detail-item"><span class="key">Endpoint gap |B − B<sup>ε</sup>|</span><output id="whiteGap">—</output></div>
+      <div class="compare-detail-item"><span class="key">Expected sign-flip rate</span><output id="whiteExpectedFlip">—</output></div>
+    </div>
+    <p class="comparison-note"><b>What is controlled?</b> Each panel shows a single simple symmetric random walk, scaled by (δ, δ²). Both experiments use <b>N = ⌊0.9 / δ²⌋</b> discrete time steps and the same per-sign resampling probability ε. The underlying random draws are independent between the two models; their <b>marginal single-path laws</b>, not their actual samples, are matched. Dashed blue in the right-hand White Noise panel is its unchanged original path.</p>
+    <div class="compare-legend"><span><i></i>Original trajectory</span><span><i class="amber"></i>Resampled trajectory</span><span>Orange highlights changes, not a new noise law.</span></div>
+  </section>
+
+  <details class="card detail-fold">
+    <summary>Mathematical details · Why do the two correlations behave differently?</summary>
+    <p><b>White Noise control.</b> Choose independent Rademacher signs ξ<sub>k</sub> ∈ {−1,+1}. For each k, let I<sub>k</sub> ∼ Bernoulli(ε) and an independent copy ξ̃<sub>k</sub>. Write ξ<sub>k</sub><sup>ε</sup> = (1−I<sub>k</sub>)ξ<sub>k</sub> + I<sub>k</sub>ξ̃<sub>k</sub>. The two partial sums use the identical time grid Δt = δ² and the same N as the Brownian Web simulation.</p>
+    <span class="formula">B<sup>δ</sup>(t) = δ ∑<sub>0≤k&lt;t/δ²</sub> ξ<sub>k</sub> &nbsp;;&nbsp; B<sup>δ,ε</sup>(t) = δ ∑<sub>0≤k&lt;t/δ²</sub> ξ<sub>k</sub><sup>ε</sup></span>
+    <span class="formula">Cov(B<sup>δ</sup>(T<sub>N</sub>), B<sup>δ,ε</sup>(T<sub>N</sub>)) = (1−ε)Nδ² &nbsp;;&nbsp; Corr = 1−ε.</span>
+    <p><b>Brownian Web approximation.</b> A path follows an independent sign attached to its current space–time lattice site: X<sub>n+1</sub> = X<sub>n</sub> + σ<sub>(X<sub>n</sub>,n)</sub>. Two paths in the same environment coalesce when they meet. The corresponding original/resampled paths can meet again after separating, so their per-step correlations depend on their <i>meeting probability</i>.</p>
+    <span class="formula">Corr(δX<sub>N</sub>, δX<sub>N</sub><sup>ε</sup>) = (1−ε)/N × ∑<sub>n=0</sub><sup>N−1</sup> P(X<sub>n</sub> = X<sub>n</sub><sup>ε</sup>).</span>
+    <p>Both endpoint correlations are theoretical finite-step quantities. The Brownian Web value is evaluated by numerical quadrature of the exact meeting-probability expression, <b>not</b> estimated from the displayed paths. For fixed ε &gt; 0 as δ → 0, this single-path Brownian Web correlation tends to zero, whereas the White Noise control stays at 1−ε. The full black-noise theorem concerns the associated interval-factor noise, not just this one observable.</p>
+  </details>
+
+  <div class="math-bottom">
+    <section class="card equation-card">
+      <h3>01 · Coalescing walks and diffusive scaling</h3>
+      <div class="equation">X<sub>n+1</sub> = X<sub>n</sub> + σ<sub>(X<sub>n</sub>,n)</sub><span style="color:#b3c1cb"> &nbsp;→&nbsp; </span> (δX<sub>n</sub>, δ²n)</div>
+      <p>The σ<sub>z</sub> are independent symmetric ±1 signs on the even space–time lattice. Each walk follows its fixed arrow field; paths that meet subsequently agree. Only a finite skeleton is drawn, not every path of the continuum Brownian Web.</p>
+    </section>
+    <section class="card equation-card">
+      <h3>02 · Independent resampling coupling</h3>
+      <div class="equation">σ<sup>ε</sup><sub>z</sub> = (1 − I<sub>z</sub>)σ<sub>z</sub> + I<sub>z</sub>σ̃<sub>z</sub></div>
+      <p>I<sub>z</sub> ∼ Bernoulli(ε); σ̃<sub>z</sub> is an independent fair sign. Each site has a fixed random threshold, so varying ε adds or removes resampling events without redrawing the original field. The same coupling rule is used for White Noise.</p>
+    </section>
+  </div>
+  <details class="card detail-fold" style="margin-top:16px;">
+    <summary>Definition · How does this lattice system approximate the Brownian Web?</summary>
+    <p>The Brownian Web is a random compact family of continuous coalescing Brownian paths. In its standard characterization: (i) almost surely, each deterministic space–time point has a unique outgoing path; (ii) paths from any finite deterministic collection of starting points are distributed as coalescing standard Brownian motions; (iii) all paths are the closure of paths starting from a fixed deterministic countable dense set. Under the diffusive map (x,n) ↦ (δx,δ²n), the full family of parity-lattice coalescing walks converges in distribution in the appropriate path-space topology. This visualization renders a finite selected skeleton of that lattice approximation.</p>
+  </details>
+  <p class="footnote"><b>Suggested experiment:</b> Hold ε = 0.025 and decrease δ from 0.02000 to 0.00375. Compare the White Noise control's constant correlation 1−ε with the decreasing single-path Brownian Web correlation. The colored paths are <i>single realizations</i>; the correlations above are theoretical quantities. Dense-grid arrow counts are explicitly labeled as sample-based estimates.</p>
+</main>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const DELTAS = [0.020, 0.016, 0.013, 0.011, 0.009, 0.0075, 0.00625, 0.00525, 0.0045, 0.00375];
+  const TMAX = 0.9, XMIN = -1.10, XMAX = 1.10;
+  const els = {
+    delta:$('deltaSlider'),eps:$('epsSlider'),deltaV:$('deltaValue'),epsV:$('epsValue'),
+    nSites:$('nSites'),nFlipped:$('nFlipped'),flippedRate:$('flippedRate'),flipName:$('flipName'),changed:$('changedPct'),nPaths:$('nPaths'),rho:$('rhoValue'),
+    flips:$('showFlip'),arrows:$('showArrows'),orig:$('originalCanvas'),res:$('resampledCanvas'),overlay:$('overlayCanvas'),
+    newSeed:$('newSeed'),animate:$('animateBtn'),start:$('startInfo'),split:$('splitInfo'),end:$('endInfo'),
+    whiteO:$('whiteOriginal'),whiteR:$('whiteResampled'),whiteRho:$('whiteRho'),webRho:$('webRho'),whiteBar:$('whiteBar'),webBar:$('webBar'),compareDelta:$('compareDelta'),compareEps:$('compareEps'),compareN:$('compareN'),compareDt:$('compareDt'),whiteAttempts:$('whiteAttempts'),whiteFlips:$('whiteFlips'),whiteGap:$('whiteGap'),whiteExpectedFlip:$('whiteExpectedFlip')
+  };
+  const state = { dIdx:8,eps:.025,seed:71931,origPaths:[],resPaths:[],whiteOrig:null,whiteRes:null,seeds:[],flipped:[],selected:0,manualSelected:false,pickExample:true,nMax:0,delta:0.0045,queued:false,animation:null,dirtyOriginal:false,whiteAttemptCount:0,whiteFlipCount:0 };
+  const floorParity = (x,n) => ((x + n) & 1) === 0;
+  // Hash by site and channel: a fixed, reproducible pseudo-random sample per lattice point.
+  function rnd(x,n,channel) {
+    let h = (Math.imul(x|0,0x9e3779b1) ^ Math.imul(n|0,0x85ebca6b) ^ Math.imul((state.seed+Math.imul(channel+1,0x27d4eb2d))|0,0xc2b2ae35)) >>> 0;
+    h ^= h >>> 16; h = Math.imul(h,0x7feb352d) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h,0x846ca68b) >>> 0;
+    h ^= h >>> 16; return (h >>> 0) / 4294967296;
+  }
+  function originalArrow(x,n) { return rnd(x,n,0) < 0.5 ? -1 : 1; }
+  function sampled(x,n) { return rnd(x,n,2) < state.eps; }
+  function resampledArrow(x,n) { return sampled(x,n) ? (rnd(x,n,1) < .5 ? -1 : 1) : originalArrow(x,n); }
+  function actualFlip(x,n) { return sampled(x,n) && ((rnd(x,n,0)<.5) !== (rnd(x,n,1)<.5)); }
+  function buildStarts() {
+    const count = Math.min(20, Math.round(10 + (0.2 - state.delta) * 45));
+    const starts = []; const seen = new Set();
+    for(const tau of [0,0.28,0.56]) {
+      let n = Math.min(state.nMax-1,Math.round(tau/(state.delta*state.delta)));
+      for(let j=0;j<count;j++) {
+        const physicalX = -0.91 + 1.82 * j / (count-1);
+        let x = Math.round(physicalX/state.delta);
+        if(!floorParity(x,n)) x += 1;
+        const key=x+','+n;
+        if(!seen.has(key)) { seen.add(key); starts.push({x,n,tier:tau}); }
+      }
+    }
+    return starts;
+  }
+  function makePath(start, resampled) {
+    const xs = new Int32Array(state.nMax - start.n + 1);
+    xs[0]=start.x;
+    for(let i=1;i<xs.length;i++) {
+      const n = start.n+i-1;
+      xs[i]=xs[i-1]+(resampled?resampledArrow(xs[i-1],n):originalArrow(xs[i-1],n));
+    }
+    return {start, xs};
+  }
+  // Temporal independent signs provide a discrete white-noise (Brownian-motion) control.
+  function whiteSign(n,channel) { return rnd(31717,n,channel)<.5?-1:1; }
+  function buildWhiteOriginal() {
+    const a=new Int32Array(state.nMax+1); // start at zero and time zero
+    for(let n=0;n<state.nMax;n++) a[n+1]=a[n]+whiteSign(n,3);
+    state.whiteOrig=a;
+  }
+  function buildWhiteUpdated() {
+    const b=new Int32Array(state.nMax+1);
+    let attempts=0, flips=0;
+    for(let n=0;n<state.nMax;n++) {
+      const oldSign=whiteSign(n,3);
+      const resample=rnd(31717,n,5)<state.eps;
+      const nextSign=resample?whiteSign(n,4):oldSign;
+      if(resample)attempts++;
+      if(nextSign!==oldSign)flips++;
+      b[n+1]=b[n]+nextSign;
+    }
+    state.whiteRes=b;
+    state.whiteAttemptCount=attempts;
+    state.whiteFlipCount=flips;
+  }
+  // Exact finite-step correlation using the spectral representation of
+  // the difference process. Simpson quadrature evaluates a one-dimensional
+  // integral, avoiding a O(N^2) probability recursion for very small delta.
+  function webCorrelation(N,eps) {
+    if(eps<=0) return 1;
+    const a=1-eps, M=1024, h=(Math.PI/2)/M;
+    let sum=0;
+    for(let i=0;i<=M;i++) {
+      const theta=i*h, c=Math.cos(theta),s=Math.sin(theta);
+      const denom=a*a*c*c+eps*eps*s*s;
+      const lambda=denom? a*a*c*c/denom:0;
+      const oneMinus=1-lambda;
+      const powers=oneMinus<1e-11?N:-Math.expm1(N*Math.log(lambda||Number.MIN_VALUE))/oneMinus;
+      const f=lambda*powers;
+      sum+=(i===0||i===M?1:(i%2?4:2))*f;
+    }
+    return Math.max(0,Math.min(1,(1-eps)*(2/(Math.PI*a))*h*sum/(3*N)));
+  }
+  function buildOriginal() {
+    state.delta=DELTAS[state.dIdx];
+    state.nMax=Math.floor(TMAX/(state.delta*state.delta));
+    state.seeds=buildStarts();
+    state.origPaths=state.seeds.map(s=>makePath(s,false));
+    buildWhiteOriginal();
+    state.selected=Math.min(state.selected,state.seeds.length-1);
+  }
+  function buildUpdated() {
+    state.resPaths=state.seeds.map(s=>makePath(s,true));
+    buildWhiteUpdated();
+    const left=Math.ceil(XMIN/state.delta),right=Math.floor(XMAX/state.delta);
+    const width=right-left+1,evenX=Math.floor(width/2)+(width%2 && (left&1)===0?1:0),oddX=width-evenX;
+    const evenN=Math.floor(state.nMax/2)+1,oddN=state.nMax+1-evenN;
+    const total=evenN*evenX+oddN*oddX;
+    let flips=0,attempts=0,checked=0;
+    const highlighted=[];
+    // Full exact count only for small lattices. A full fine-grid scan would
+    // exceed 18 million lattice sites and block the UI during epsilon edits.
+    const exact=total<=90000;
+    const strideN=exact?1:Math.max(1,Math.ceil((state.nMax+1)/170));
+    const strideX=exact?1:Math.max(1,Math.ceil(width/140));
+    for(let n=0;n<=state.nMax;n+=strideN){
+      for(let x=left;x<=right;x+=strideX){
+        if(!floorParity(x,n))continue;
+        checked++;
+        if(sampled(x,n)) {
+          attempts++;
+          if(actualFlip(x,n)){flips++;highlighted.push({x,n});}
+        }
+      }
+    }
+    state.flipped=highlighted;
+    if (state.pickExample && !state.manualSelected) {
+      let best=0,bestScore=-Infinity;
+      for(let i=0;i<state.seeds.length;i++) {
+        const a=state.origPaths[i],b=state.resPaths[i],s=state.seeds[i];
+        if(s.tier>0.01||Math.abs(s.x*state.delta)>.75)continue;
+        let visibleDifference=0;
+        const stride=Math.max(1,Math.ceil(a.xs.length/750));
+        for(let k=0;k<a.xs.length;k+=stride){
+          const u=a.xs[k]*state.delta,v=b.xs[k]*state.delta;
+          if(Math.abs(u)<1.15||Math.abs(v)<1.15)visibleDifference+=Math.min(Math.abs(u-v),1.2);
+        }
+        const score=visibleDifference-0.01*Math.abs(s.x*state.delta);
+        if(score>bestScore){best=i;bestScore=score;}
+      }
+      state.selected=best;state.pickExample=false;
+    }
+    let endpointChanged=0,distance=0;
+    for(let i=0;i<state.seeds.length;i++) {
+      const a=state.origPaths[i].xs,b=state.resPaths[i].xs;
+      if(a[a.length-1]!==b[b.length-1])endpointChanged++;
+      distance+=Math.abs(a[a.length-1]-b[b.length-1])*state.delta;
+    }
+    const percent=100*endpointChanged/state.seeds.length;
+    const estimatedFlips=exact?flips:Math.round(flips/Math.max(1,checked)*total);
+    els.nSites.textContent=total.toLocaleString('en-US');
+    els.nFlipped.textContent=(exact?'':'≈')+estimatedFlips.toLocaleString('en-US');
+    els.flipName.textContent=exact?'Actual arrow reversals':'Arrow reversals (estimated)';
+    els.flippedRate.textContent=exact?
+      attempts+' resampled sites · '+(100*flips/total).toFixed(2)+'% arrows reversed':
+      'Sampled '+checked.toLocaleString('en-US')+' sites · '+(100*flips/Math.max(1,checked)).toFixed(2)+'% reversed (expected ε/2)';
+    els.changed.textContent=percent.toFixed(1)+'%';
+    els.nPaths.textContent=endpointChanged+'/'+state.seeds.length+' endpoints differ · mean gap '+(distance/state.seeds.length).toFixed(3);
+    els.rho.textContent=(1-state.eps).toFixed(3);
+    els.deltaV.textContent=state.delta.toFixed(5);
+    els.epsV.textContent=state.eps.toFixed(3);
+    els.eps.setAttribute('aria-valuetext',state.eps.toFixed(3));
+    els.delta.setAttribute('aria-valuetext',state.delta.toFixed(5));
+    const whiteCorr=1-state.eps,webCorr=webCorrelation(state.nMax,state.eps);
+    els.whiteRho.textContent=whiteCorr.toFixed(3);
+    els.webRho.textContent=webCorr.toFixed(3);
+    els.whiteBar.style.width=(whiteCorr*100).toFixed(2)+'%';
+    els.webBar.style.width=(webCorr*100).toFixed(2)+'%';
+    // Shared readouts are derived from the same values used to generate both models.
+    els.compareDelta.textContent=state.delta.toFixed(5);
+    els.compareEps.textContent=state.eps.toFixed(3);
+    els.compareN.textContent=state.nMax.toLocaleString('en-US');
+    els.compareDt.textContent=(state.delta**2).toExponential(3);
+    els.whiteAttempts.textContent=state.whiteAttemptCount.toLocaleString('en-US')+' / '+state.nMax.toLocaleString('en-US');
+    els.whiteFlips.textContent=state.whiteFlipCount.toLocaleString('en-US')+' / '+state.nMax.toLocaleString('en-US');
+    els.whiteExpectedFlip.textContent=(state.eps*50).toFixed(2)+'%';
+    const n=state.nMax;
+    els.whiteGap.textContent=(Math.abs(state.whiteOrig[n]-state.whiteRes[n])*state.delta).toFixed(4);
+  }
+  function canvasContext(canvas) {
+    const box=canvas.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1);
+    const w=Math.max(100,box.width),h=Math.max(100,box.height);
+    const pw=Math.round(w*dpr),ph=Math.round(h*dpr);
+    if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph;}
+    const ctx=canvas.getContext('2d',{alpha:false});
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx,w,h,plot:{left:42,right:w-17,top:18,bottom:h-35}};
+  }
+  function mapPos(graph,x,n) {
+    const p=graph.plot;
+    return { x:p.left+(x*state.delta-XMIN)/(XMAX-XMIN)*(p.right-p.left),
+             y:p.bottom-(n*state.delta*state.delta)/TMAX*(p.bottom-p.top) };
+  }
+  function mapPhysical(graph,x,t) {
+    const p=graph.plot;
+    return {x:p.left+(x-XMIN)/(XMAX-XMIN)*(p.right-p.left),y:p.bottom-t/TMAX*(p.bottom-p.top)};
+  }
+  function background(graph) {
+    const {ctx,w,h,plot:p}=graph;
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);
+    ctx.save();ctx.strokeStyle='#edf2f6';ctx.lineWidth=1;
+    for(let x=-1;x<=1.001;x+=0.25){const xp=mapPhysical(graph,x,0).x; ctx.beginPath();ctx.moveTo(xp,p.top);ctx.lineTo(xp,p.bottom);ctx.stroke();}
+    for(let t=0;t<=TMAX+1e-5;t+=0.15){const yp=mapPhysical(graph,0,t).y;ctx.beginPath();ctx.moveTo(p.left,yp);ctx.lineTo(p.right,yp);ctx.stroke();}
+    ctx.strokeStyle='#9fb5c9';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(p.left,p.top);ctx.lineTo(p.left,p.bottom);ctx.lineTo(p.right,p.bottom);ctx.stroke();
+    ctx.fillStyle='#7890a6';ctx.font='11px -apple-system, sans-serif';
+    ctx.textAlign='center';for(let x=-1;x<=1.001;x+=.5){const xp=mapPhysical(graph,x,0).x;ctx.fillText((Math.abs(x)<1e-8?'0':x.toFixed(1)),xp,p.bottom+17);}
+    ctx.textAlign='right';for(let t=0;t<TMAX;t+=.3){const yp=mapPhysical(graph,0,t).y;ctx.fillText(t.toFixed(1),p.left-9,yp+4);}
+    ctx.fillStyle='#476d8f';ctx.font='italic 13px Georgia,serif';ctx.textAlign='left';ctx.fillText('t',p.left-9,p.top-6);ctx.fillText('x',p.right+5,p.bottom+4);
+    ctx.restore();
+  }
+  function drawArrow(ctx,x1,y1,x2,y2,color) {
+    const dx=x2-x1,dy=y2-y1,m=Math.hypot(dx,dy)||1;
+    if(m>22) {x2=x1+dx/m*22;y2=y1+dy/m*22;}
+    const ux=(x2-x1)/(Math.hypot(x2-x1,y2-y1)||1),uy=(y2-y1)/(Math.hypot(x2-x1,y2-y1)||1);
+    ctx.strokeStyle=color;ctx.lineWidth=.85;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x2-ux*4-uy*2,y2-uy*4+ux*2);ctx.lineTo(x2,y2);ctx.lineTo(x2-ux*4+uy*2,y2-uy*4-ux*2);ctx.stroke();
+  }
+  function discreteArrows(graph,modified) {
+    if(!els.arrows.checked) return;
+    const p=graph.plot,ctx=graph.ctx;
+    const strideN=Math.max(1,Math.ceil(state.nMax/34));
+    const nRight=Math.ceil(XMAX/state.delta), nLeft=Math.floor(XMIN/state.delta);
+    const strideX=Math.max(1,Math.ceil((nRight-nLeft)/38));
+    ctx.save();ctx.beginPath();ctx.rect(p.left,p.top,p.right-p.left,p.bottom-p.top);ctx.clip();
+    for(let n=0;n<state.nMax;n+=strideN) {
+      for(let x=nLeft;x<=nRight;x++) {
+        if(!floorParity(x,n) || Math.abs(x)%strideX!==0) continue;
+        const s=modified?resampledArrow(x,n):originalArrow(x,n);
+        const a=mapPos(graph,x,n),b=mapPos(graph,x+s,n+1);
+        const flip=modified&&actualFlip(x,n);
+        drawArrow(ctx,a.x,a.y,b.x,b.y,flip?'rgba(231,91,58,.62)':'rgba(91,132,166,.28)');
+      }
+    }
+    ctx.restore();
+  }
+  function strokePath(ctx,graph,path,color,width) {
+    const p=graph.plot;ctx.save();ctx.beginPath();ctx.rect(p.left,p.top,p.right-p.left,p.bottom-p.top);ctx.clip();
+    ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();
+    const stride=Math.max(1,Math.ceil(path.xs.length/1600)), last=path.xs.length-1;
+    for(let k=0;k<=last;k+=stride){const pt=mapPos(graph,path.xs[k],path.start.n+k);if(k===0)ctx.moveTo(pt.x,pt.y);else ctx.lineTo(pt.x,pt.y);}
+    if(last%stride){const pt=mapPos(graph,path.xs[last],path.start.n+last);ctx.lineTo(pt.x,pt.y);}
+    ctx.stroke();ctx.restore();
+  }
+  function drawResampledSegmented(ctx,graph,newP,oldP,selected=false) {
+    const p=graph.plot;ctx.save();ctx.beginPath();ctx.rect(p.left,p.top,p.right-p.left,p.bottom-p.top);ctx.clip();
+    ctx.lineJoin='round';ctx.lineCap='round';
+    const a=newP.xs,b=oldP.xs,last=a.length-1,stride=Math.max(1,Math.ceil(a.length/1550));
+    let prev=mapPos(graph,a[0],newP.start.n),previousState=null,active=false;
+    const pen=change=>{ctx.strokeStyle=selected?(change?'#e35d3b':'#174f82'):(change?'rgba(230,97,63,.48)':'rgba(42,102,153,.22)');ctx.lineWidth=selected?2.8:(change?1.15:.98);};
+    for(let k=stride;k<=last+stride;k+=stride){
+      const ix=Math.min(k,last),v=mapPos(graph,a[ix],newP.start.n+ix);
+      const change=a[ix]!==b[ix]||a[Math.max(0,ix-stride)]!==b[Math.max(0,ix-stride)];
+      if(change!==previousState){if(active)ctx.stroke();pen(change);ctx.beginPath();ctx.moveTo(prev.x,prev.y);previousState=change;active=true;}
+      ctx.lineTo(v.x,v.y);prev=v;if(ix===last)break;
+    }
+    if(active)ctx.stroke();
+    ctx.restore();
+  }
+  function drawFlipMarkers(graph) {
+    if(!els.flips.checked)return;
+    const ctx=graph.ctx,p=graph.plot;ctx.save();ctx.beginPath();ctx.rect(p.left,p.top,p.right-p.left,p.bottom-p.top);ctx.clip();
+    const radius=state.delta>0.01?2.3:1.8;
+    ctx.fillStyle='rgba(236,100,62,.74)';
+    for(const pt of state.flipped){const q=mapPos(graph,pt.x,pt.n);ctx.beginPath();ctx.arc(q.x,q.y,radius,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  }
+  function startMarkers(graph) {
+    const ctx=graph.ctx,p=graph.plot;ctx.save();ctx.beginPath();ctx.rect(p.left,p.top,p.right-p.left,p.bottom-p.top);ctx.clip();
+    ctx.fillStyle='rgba(22,94,151,.30)';
+    for(const s of state.seeds){const pt=mapPos(graph,s.x,s.n);ctx.beginPath();ctx.arc(pt.x,pt.y,1.6,0,Math.PI*2);ctx.fill();}
+    const active=state.seeds[state.selected];if(active){const q=mapPos(graph,active.x,active.n);ctx.fillStyle='#144b7c';ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fill();ctx.stroke();}
+    ctx.restore();
+  }
+  function renderPanel(canvas,modified) {
+    const graph=canvasContext(canvas),ctx=graph.ctx;
+    background(graph);discreteArrows(graph,modified);
+    if(!modified) {
+      for(let i=state.origPaths.length-1;i>=0;i--) {
+        if(i===state.selected)continue;
+        const tier=state.origPaths[i].start.tier;
+        strokePath(ctx,graph,state.origPaths[i],tier>0.5?'rgba(25,81,125,.24)':tier>0.2?'rgba(24,91,143,.31)':'rgba(24,91,143,.42)',tier<.1?1.18:1.03);
+      }
+      strokePath(ctx,graph,state.origPaths[state.selected],'#174f82',2.8);
+    } else {
+      for(let i=state.resPaths.length-1;i>=0;i--)if(i!==state.selected)drawResampledSegmented(ctx,graph,state.resPaths[i],state.origPaths[i]);
+      drawResampledSegmented(ctx,graph,state.resPaths[state.selected],state.origPaths[state.selected],true);
+    }
+    drawFlipMarkers(graph);startMarkers(graph);
+  }
+  function overlay() {
+    const graph=canvasContext(els.overlay),ctx=graph.ctx;
+    background(graph);
+    const a=state.origPaths[state.selected],b=state.resPaths[state.selected];if(!a||!b)return;
+    strokePath(ctx,graph,a,'#216da8',2.5);strokePath(ctx,graph,b,'#e95f40',2.2);
+    let split=-1;
+    for(let k=1;k<a.xs.length;k++)if(a.xs[k]!==b.xs[k]){split=k;break;}
+    const last=a.xs.length-1;
+    const dist=Math.abs(a.xs[last]-b.xs[last])*state.delta;
+    els.start.textContent='Start: (x, t) = ('+(a.start.x*state.delta).toFixed(3)+', '+(a.start.n*state.delta**2).toFixed(3)+')';
+    els.split.textContent='First separation: '+(split<0?'None':((a.start.n+split)*state.delta**2).toFixed(4));
+    els.end.textContent='Endpoint distance: '+dist.toFixed(4);
+    // Line segments connect the corresponding paths at selected moments.
+    ctx.save();ctx.lineWidth=1;ctx.setLineDash([3,4]);ctx.strokeStyle='rgba(195,113,87,.32)';
+    const count=5;for(let i=1;i<=count;i++){
+      const k=Math.round(last*i/(count+1));
+      if(k<1||a.xs[k]===b.xs[k]) continue;
+      const u=mapPos(graph,a.xs[k],a.start.n+k),v=mapPos(graph,b.xs[k],b.start.n+k);
+      ctx.beginPath();ctx.moveTo(u.x,u.y);ctx.lineTo(v.x,v.y);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawWhite(canvas,modified){
+    const graph=canvasContext(canvas),ctx=graph.ctx;
+    background(graph);
+    const arr=modified?state.whiteRes:state.whiteOrig;
+    const drawArr=(xs,color,width,dashed=false)=>{
+      const p=graph.plot;ctx.save();ctx.beginPath();ctx.rect(p.left,p.top,p.right-p.left,p.bottom-p.top);ctx.clip();
+      ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap='round';ctx.lineJoin='round';
+      if(dashed)ctx.setLineDash([6,5]);
+      ctx.beginPath();const stride=Math.max(1,Math.ceil(xs.length/1500)),last=xs.length-1;
+      for(let k=0;k<=last;k+=stride){const pt=mapPos(graph,xs[k],k);if(k===0)ctx.moveTo(pt.x,pt.y);else ctx.lineTo(pt.x,pt.y);}
+      if(last%stride){const pt=mapPos(graph,xs[last],last);ctx.lineTo(pt.x,pt.y);}
+      ctx.stroke();ctx.restore();
+    };
+    if(modified)drawArr(state.whiteOrig,'rgba(34,103,156,.40)',2,true);
+    drawArr(arr,modified?'#e36c48':'#1e73ae',2.5);
+  }
+  function redraw() { if(!state.origPaths.length)return;renderPanel(els.orig,false);renderPanel(els.res,true);overlay();drawWhite(els.whiteO,false);drawWhite(els.whiteR,true); }
+  function update(rebuild=false) { if(rebuild)buildOriginal();buildUpdated();redraw(); }
+  let updateDelay=null;
+  function queueUpdate(rebuild=false) {
+    if(rebuild) state.dirtyOriginal=true;
+    clearTimeout(updateDelay);
+    // At the finest scale N~64,000; avoid repeated expensive computations
+    // while the pointer is actively crossing slider ticks.
+    updateDelay=setTimeout(()=>{
+      if(state.queued)return;state.queued=true;
+      requestAnimationFrame(()=>{state.queued=false;const dirty=!!state.dirtyOriginal;state.dirtyOriginal=false;update(dirty);});
+    }, state.nMax>12000?125:45);
+  }
+  function stopAnimate(){if(state.animation){clearInterval(state.animation);state.animation=null;els.animate.textContent='▶ Sweep ε';els.animate.setAttribute('aria-pressed','false');}}
+  function previewSharedControls() {
+    const d=DELTAS[state.dIdx];
+    els.deltaV.textContent=d.toFixed(5);
+    els.epsV.textContent=state.eps.toFixed(3);
+    els.compareDelta.textContent=d.toFixed(5);
+    els.compareEps.textContent=state.eps.toFixed(3);
+    els.compareN.textContent=Math.floor(TMAX/(d*d)).toLocaleString('en-US');
+    els.compareDt.textContent=(d*d).toExponential(3);
+  }
+  els.delta.addEventListener('input',()=>{state.dIdx=Number(els.delta.value);state.manualSelected=false;state.pickExample=true;previewSharedControls();queueUpdate(true);});
+  els.eps.addEventListener('input',()=>{stopAnimate();state.eps=Number(els.eps.value)/1000;previewSharedControls();queueUpdate();});
+  els.flips.addEventListener('change',redraw);els.arrows.addEventListener('change',redraw);
+  els.newSeed.addEventListener('click',()=>{stopAnimate();state.manualSelected=false;state.seed=(state.seed+104729)|0;state.pickExample=true;queueUpdate(true);});
+  els.animate.addEventListener('click',()=>{
+    if(state.animation){stopAnimate();return;}
+    els.animate.textContent='❚❚ Pause sweep';els.animate.setAttribute('aria-pressed','true');
+    state.eps=0;els.eps.value='0';previewSharedControls();queueUpdate();
+    state.animation=setInterval(()=>{const e=Number(els.eps.value);if(e>=80){stopAnimate();return;}els.eps.value=String(e+2);state.eps=(e+2)/1000;previewSharedControls();queueUpdate();},380);
+  });
+  // Click near a trajectory at the clicked height (not just its start point).
+  function selectAt(canvas,modified,event) {
+    const graph=canvasContext(canvas),r=canvas.getBoundingClientRect();
+    const px=event.clientX-r.left,py=event.clientY-r.top,p=graph.plot;
+    if(px<p.left||px>p.right||py<p.top||py>p.bottom)return;
+    const t=TMAX*(p.bottom-py)/(p.bottom-p.top);
+    let best=-1, bestDistance=Infinity;
+    const paths=modified?state.resPaths:state.origPaths;
+    for(let i=0;i<paths.length;i++) {
+      const path=paths[i];const n=Math.round(t/(state.delta**2));
+      if(n<path.start.n||n>state.nMax)continue;
+      const k=n-path.start.n;
+      const q=mapPos(graph,path.xs[k],n);
+      const ds=Math.abs(q.x-px);
+      if(ds<bestDistance){bestDistance=ds;best=i;}
+    }
+    if(best>=0 && bestDistance<24){state.selected=best;state.manualSelected=true;state.pickExample=false;redraw();}
+  }
+  els.orig.addEventListener('click',e=>selectAt(els.orig,false,e));
+  els.res.addEventListener('click',e=>selectAt(els.res,true,e));
+  window.addEventListener('keydown',e=>{if(e.key==='Escape')stopAnimate();});
+  if('ResizeObserver' in window){let id;const ro=new ResizeObserver(()=>{cancelAnimationFrame(id);id=requestAnimationFrame(redraw);});[els.orig,els.res,els.overlay].forEach(c=>ro.observe(c));}
+  else window.addEventListener('resize',redraw);
+  update(true);
+})();
+</script>
+</body>
+</html>
